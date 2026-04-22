@@ -1,24 +1,11 @@
 {
   "name": "NettoPlanning",
   "short_name": "NettoPlanning",
-  "description": "Planning de nettoyage pour artisans",
-  "start_url": "/",
+  "description": "Planning de nettoyage",
+  "start_url": "https://cybermons10-max.github.io/nettoplanning/index.html",
+  "scope": "https://cybermons10-max.github.io/nettoplanning/",
   "display": "standalone",
-  "background_color": "#0F1117",
-  "theme_color": "#0F1117",
-  "orientation": "portrait",
-  "icons": [
-    {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ]
+  "background_color": "#2563EB",
+  "theme_color": "#2563EB",
+  "orientation": "portrait"
 }
