@@ -167,6 +167,7 @@
   <div class="tabs">
     <button class="tab active" onclick="setVue('semaine',this)">📅 Semaine</button>
     <button class="tab" onclick="setVue('agents',this)">👤 Agents</button>
+    <button class="tab" onclick="setVue('clients',this)">👥 Clients</button>
     <button class="tab" onclick="setVue('stats',this)">📊 Stats</button>
     <button class="tab" onclick="setVue('config',this)">⚙️ Gérer</button>
   </div>
@@ -235,12 +236,12 @@ const EMPLOYES_INIT = [
   {id:7,nom:'Marc V.',   couleur:'#DB2777',tel:'0612000007'},
 ];
 const CLIENTS_INIT = [
-  {id:1,nom:'Mme Dupont',        adresse:'12 rue des Lilas',    type:'particulier'},
-  {id:2,nom:'M. Bernard',        adresse:'5 allée des Roses',   type:'particulier'},
-  {id:3,nom:'Résidence Victoire',adresse:'8 bd Victor Hugo',    type:'public'},
-  {id:4,nom:'Mme Garcia',        adresse:'3 impasse du Moulin', type:'particulier'},
-  {id:5,nom:'Mairie annexe',     adresse:'2 place de la Paix',  type:'public'},
-  {id:6,nom:'M. Leroy',          adresse:'27 rue du Général',   type:'particulier'},
+  {id:1,nom:'Mme Dupont',        adresse:'12 rue des Lilas',    type:'particulier',tel:'0612000010',email:'dupont@email.fr',notes:'Code porte : 1234'},
+  {id:2,nom:'M. Bernard',        adresse:'5 allée des Roses',   type:'particulier',tel:'0612000011',email:'bernard@email.fr',notes:''},
+  {id:3,nom:'Résidence Victoire',adresse:'8 bd Victor Hugo',    type:'public',     tel:'0612000012',email:'contact@residence.fr',notes:'Badge acces requis'},
+  {id:4,nom:'Mme Garcia',        adresse:'3 impasse du Moulin', type:'particulier',tel:'0612000013',email:'garcia@email.fr',notes:''},
+  {id:5,nom:'Mairie annexe',     adresse:'2 place de la Paix',  type:'public',     tel:'0612000014',email:'mairie@ville.fr',notes:'Entree cote parking'},
+  {id:6,nom:'M. Leroy',          adresse:'27 rue du Général',   type:'particulier',tel:'0612000015',email:'leroy@email.fr',notes:''},
 ];
 const MISSIONS_INIT = [
   {id:1, employe:1,client:1,jour:0,heure:'08:00',duree:'2h'},
@@ -255,7 +256,8 @@ const MISSIONS_INIT = [
   {id:10,employe:3,client:4,jour:5,heure:'09:00',duree:'2h'},
 ];
 
-let missions=[],employes=[],clients=CLIENTS_INIT;
+let missions=[],employes=[],clients=CLIENTS_INIT.map(c=>({...c}));
+let nextCId=7;
 let nextMId=11,nextEId=8,vue='semaine',jourActif=0,empActif=null;
 let editingAgent=null,agentCouleur=COULEURS[0];
 
@@ -265,7 +267,7 @@ function load(){
   empActif=employes[0]?.id||null;
 }
 function save(){
-  localStorage.setItem(KEY,JSON.stringify({missions,employes,nextMId,nextEId}));
+  localStorage.setItem(KEY,JSON.stringify({missions,employes,clients,nextMId,nextEId,nextCId}));
   document.getElementById('header-sub').textContent=`${employes.length} agents · ${missions.length} missions cette semaine`;
 }
 
@@ -348,8 +350,8 @@ function sendPlanningAgent(empId){
   const ms=me(empId).sort((a,b)=>a.jour-b.jour||a.heure.localeCompare(b.heure));
   if(!ms.length){showToast('⚠️ Aucune mission à envoyer');return;}
   let msg=`Bonjour ${emp.nom.split(' ')[0]} 👋\n\n📅 Votre planning de la semaine :\n\n`;
-  ms.forEach(m=>{const cli=gc(m.client);msg+=`*${JOURS_FULL[m.jour]}* — ${m.heure} (${m.duree})\n📍 ${cli?.nom} — ${cli?.adresse}\n\n`;});
-  msg+=`Bonne semaine à vous ! 🧹`;
+  ms.forEach(m=>{const cli=gc(m.client);msg+=`*${JOURS_FULL[m.jour]}* — ${m.heure} (${m.duree})\n📍 ${cli?.nom} — ${cli?.adresse}${cli?.notes?'\n📝 '+cli.notes:''}\n\n`;});
+  msg+=`Bonne semaine !`;
   window.open(`https://wa.me/${emp.tel.replace(/^0/,'33')}?text=${encodeURIComponent(msg)}`,'_blank');
 }
 
@@ -364,8 +366,8 @@ function sendNextAgent(){
   const emp=sendAllList[sendAllIndex];
   const ms=me(emp.id).sort((a,b)=>a.jour-b.jour||a.heure.localeCompare(b.heure));
   let msg=`Bonjour ${emp.nom.split(' ')[0]} 👋\n\n📅 Votre planning de la semaine :\n\n`;
-  ms.forEach(m=>{const cli=gc(m.client);msg+=`*${JOURS_FULL[m.jour]}* — ${m.heure} (${m.duree})\n📍 ${cli?.nom} — ${cli?.adresse}\n\n`;});
-  msg+=`Bonne semaine à vous ! 🧹`;
+  ms.forEach(m=>{const cli=gc(m.client);msg+=`*${JOURS_FULL[m.jour]}* — ${m.heure} (${m.duree})\n📍 ${cli?.nom} — ${cli?.adresse}${cli?.notes?'\n📝 '+cli.notes:''}\n\n`;});
+  msg+=`Bonne semaine !`;
   window.open(`https://wa.me/${emp.tel.replace(/^0/,'33')}?text=${encodeURIComponent(msg)}`,'_blank');
   sendAllIndex++;
   if(sendAllIndex<sendAllList.length) showToast(`📲 ${sendAllIndex}/${sendAllList.length} envoyé — revenez pour le suivant`);
@@ -375,6 +377,7 @@ function render(){
   const c=document.getElementById('content');
   if(vue==='semaine')renderSemaine(c);
   else if(vue==='agents')renderAgents(c);
+  else if(vue==='clients')renderClients(c);
   else if(vue==='stats')renderStats(c);
   else if(vue==='config')renderConfig(c);
   save();
@@ -521,13 +524,93 @@ function renderConfig(c){
   c.innerHTML=h;
 }
 
+function renderClients(c){
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div class="sec-title">Clients (${clients.length})</div>
+    <button class="btn-add" onclick="openAddClient()">+ Ajouter</button>
+  </div>`;
+  if(!clients.length){
+    h+=`<div class="empty"><div class="empty-icon">👥</div><div class="empty-txt">Aucun client — appuyez sur + Ajouter</div></div>`;
+  } else {
+    clients.forEach(cli=>{
+      const nb=missions.filter(m=>m.client===cli.id).length;
+      h+=`<div class="agent-card" style="cursor:pointer" onclick="openEditClient(${cli.id})">
+        <div style="width:46px;height:46px;border-radius:14px;background:${cli.type==='public'?'#FFF7ED':'#EFF6FF'};border:2px solid ${cli.type==='public'?'#FED7AA':'#BFDBFE'};display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${cli.type==='public'?'🏢':'🏠'}</div>
+        <div style="flex:1;margin-left:12px;min-width:0">
+          <div class="agent-name">${cli.nom}</div>
+          <div class="agent-sub" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📍 ${cli.adresse}</div>
+          ${cli.tel?`<div style="font-size:12px;color:var(--muted);margin-top:2px">📞 ${cli.tel}</div>`:''}
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${nb} mission${nb>1?'s':''}</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="event.stopPropagation();window.open('tel:${cli.tel}')" style="background:var(--blue-bg);border:1.5px solid #BFDBFE;border-radius:10px;padding:8px 10px;font-size:15px;cursor:pointer" ${!cli.tel?'disabled':''}>📞</button>
+          <button onclick="event.stopPropagation();confirmDeleteClient(${cli.id})" style="background:var(--red-bg);border:1.5px solid #FECACA;border-radius:10px;padding:8px 10px;font-size:15px;cursor:pointer">🗑️</button>
+        </div>
+      </div>`;
+    });
+  }
+  c.innerHTML=h;
+}
+
+let editingClient=null;
+function openAddClient(){
+  editingClient=null;
+  document.getElementById('client-sheet-title').textContent='Nouveau client';
+  document.getElementById('cl-nom').value='';
+  document.getElementById('cl-adresse').value='';
+  document.getElementById('cl-tel').value='';
+  document.getElementById('cl-email').value='';
+  document.getElementById('cl-notes').value='';
+  document.getElementById('cl-type').value='particulier';
+  document.getElementById('btn-del-client').style.display='none';
+  document.getElementById('btn-save-client').textContent="✓ Ajouter le client";
+  document.getElementById('overlay-client').style.display='flex';
+}
+function openEditClient(id){
+  editingClient=id;
+  const cli=gc(id);
+  document.getElementById('client-sheet-title').textContent=`Modifier — ${cli.nom}`;
+  document.getElementById('cl-nom').value=cli.nom||'';
+  document.getElementById('cl-adresse').value=cli.adresse||'';
+  document.getElementById('cl-tel').value=cli.tel||'';
+  document.getElementById('cl-email').value=cli.email||'';
+  document.getElementById('cl-notes').value=cli.notes||'';
+  document.getElementById('cl-type').value=cli.type||'particulier';
+  document.getElementById('btn-del-client').style.display='block';
+  document.getElementById('btn-save-client').textContent='✓ Enregistrer';
+  document.getElementById('overlay-client').style.display='flex';
+}
+function saveClient(){
+  const nom=document.getElementById('cl-nom').value.trim();
+  if(!nom){showToast('⚠️ Entrez un nom');return;}
+  const data={nom,adresse:document.getElementById('cl-adresse').value.trim(),tel:document.getElementById('cl-tel').value.trim(),email:document.getElementById('cl-email').value.trim(),notes:document.getElementById('cl-notes').value.trim(),type:document.getElementById('cl-type').value};
+  if(editingClient){
+    clients=clients.map(c=>c.id===editingClient?{...c,...data}:c);
+    showToast('✅ Client modifié !');
+  } else {
+    clients.push({id:nextCId++,...data});
+    showToast('✅ Client ajouté !');
+  }
+  closeOverlay('overlay-client');render();
+}
+function confirmDeleteClient(id){
+  editingClient=id;deleteClient();
+}
+function deleteClient(){
+  const cli=gc(editingClient);
+  if(!confirm(`Supprimer ${cli.nom} ?\nSes missions seront aussi supprimées.`))return;
+  clients=clients.filter(c=>c.id!==editingClient);
+  missions=missions.filter(m=>m.client!==editingClient);
+  closeOverlay('overlay-client');showToast('✅ Client supprimé');render();
+}
+
 function setVue(v,btn){vue=v;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));if(btn)btn.classList.add('active');render();}
 function setJour(j){jourActif=j;render();}
 function setEmp(id){empActif=id;render();}
 
 function openAddMission(){
   document.getElementById('f-emp').innerHTML=employes.map(e=>`<option value="${e.id}">${e.nom}</option>`).join('');
-  document.getElementById('f-cli').innerHTML=clients.map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');
+  document.getElementById('f-cli').innerHTML=clients.map(c=>`<option value="${c.id}">${c.nom} (${c.type==='public'?'Public':'Particulier'})</option>`).join('');
   document.getElementById('f-jour').innerHTML=JOURS_FULL.map((j,i)=>`<option value="${i}">${j}</option>`).join('');
   document.getElementById('f-heure').innerHTML=HORAIRES.map(h=>`<option value="${h}">${h}</option>`).join('');
   document.getElementById('f-duree').innerHTML=DUREES.map(d=>`<option value="${d}">${d}</option>`).join('');
@@ -560,8 +643,12 @@ function openMission(id){
       <div class="info-label">Client</div>
       <div class="info-val">${cli?.nom}</div>
       <div class="info-addr">📍 ${cli?.adresse}</div>
+      ${cli?.tel?`<div style="margin-top:6px;font-size:13px;color:var(--text2);font-weight:500">📞 ${cli.tel}</div>`:''}
+      ${cli?.email?`<div style="margin-top:3px;font-size:13px;color:var(--text2);font-weight:500">✉️ ${cli.email}</div>`:''}
+      ${cli?.notes?`<div style="margin-top:8px;background:var(--blue-bg);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--blue);font-weight:600">📝 ${cli.notes}</div>`:''}
       <div style="margin-top:10px">${badge(cli?.type)}</div>
     </div>
+    ${cli?.tel?`<button onclick="window.open('tel:${cli.tel}')" style="width:100%;background:var(--blue-bg);color:var(--blue);border:1.5px solid #BFDBFE;border-radius:14px;padding:13px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px">📞 Appeler le client</button>`:''}
     <button class="btn-wa" onclick="sendWA(${m.id})" style="margin-bottom:10px">${waIcon()} Envoyer par WhatsApp</button>
     <button class="btn-red" onclick="deleteMission(${m.id})">🗑️ Supprimer cette mission</button>
   `;
@@ -630,5 +717,28 @@ load();render();
 document.getElementById('header-sub').textContent=`${employes.length} agents · ${missions.length} missions cette semaine`;
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
+
+<!-- MODAL CLIENT -->
+<div class="overlay" id="overlay-client" style="display:none" onclick="closeOverlay('overlay-client')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="client-sheet-title">Nouveau client</div>
+    <div class="field-wrap"><label class="field-label">Nom complet</label><input type="text" id="cl-nom" placeholder="ex: Mme Dupont"/></div>
+    <div class="field-wrap"><label class="field-label">Adresse</label><input type="text" id="cl-adresse" placeholder="ex: 12 rue des Lilas"/></div>
+    <div class="field-wrap"><label class="field-label">Téléphone</label><input type="tel" id="cl-tel" placeholder="ex: 0612345678"/></div>
+    <div class="field-wrap"><label class="field-label">Email</label><input type="text" id="cl-email" placeholder="ex: contact@email.fr"/></div>
+    <div class="field-wrap"><label class="field-label">Notes</label><input type="text" id="cl-notes" placeholder="ex: Code porte 1234, badge requis…"/></div>
+    <div class="field-wrap">
+      <label class="field-label">Type</label>
+      <select id="cl-type">
+        <option value="particulier">🏠 Particulier</option>
+        <option value="public">🏢 Public</option>
+      </select>
+    </div>
+    <button class="btn-primary" id="btn-save-client" onclick="saveClient()">✓ Ajouter le client</button>
+    <button class="btn-red" id="btn-del-client" style="display:none;margin-top:10px" onclick="deleteClient()">🗑️ Supprimer ce client</button>
+  </div>
+</div>
+
 </body>
 </html>
