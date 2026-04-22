@@ -276,6 +276,25 @@ const me=id=>missions.filter(m=>m.employe===id);
 const ini=nom=>nom.trim().charAt(0).toUpperCase();
 const totalH=ms=>{let t=0;ms.forEach(m=>{t+=parseFloat(m.duree.replace('h','.').replace('30','5'));});return t;};
 
+// ── Détection chevauchements ──
+function heureEnMin(h){ const p=h.split(":"); return parseInt(p[0])*60+parseInt(p[1]); }
+function dureeEnMin(d){ const p=d.replace("h",":").split(":"); return parseInt(p[0])*60+(parseInt(p[1])||0); }
+function finMission(m){ return heureEnMin(m.heure)+dureeEnMin(m.duree); }
+function chevauche(m1,m2){ if(m1.id===m2.id||m1.employe!==m2.employe||m1.jour!==m2.jour)return false; return heureEnMin(m1.heure)<finMission(m2)&&heureEnMin(m2.heure)<finMission(m1); }
+function aChevauch(m){ return missions.some(m2=>chevauche(m,m2)); }
+function tropPres(m1,m2){
+  if(m1.id===m2.id||m1.employe!==m2.employe||m1.jour!==m2.jour) return false;
+  const TRAJET=45;
+  const f1=finMission(m1), d2=heureEnMin(m2.heure);
+  const f2=finMission(m2), d1=heureEnMin(m1.heure);
+  // m1 avant m2
+  if(f1<=d2 && d2-f1<TRAJET) return true;
+  // m2 avant m1
+  if(f2<=d1 && d1-f2<TRAJET) return true;
+  return false;
+}
+function aTropPres(m){ return missions.some(m2=>tropPres(m,m2)); }
+
 function avatar(emp,size=42){
   const r=Math.round(size*0.28);
   return `<div class="avatar" style="width:${size}px;height:${size}px;border-radius:${r}px;background:${emp.couleur}18;border-color:${emp.couleur};font-size:${Math.round(size*0.4)}px;color:${emp.couleur}">${ini(emp.nom)}</div>`;
@@ -287,7 +306,14 @@ function badge(type){
 }
 function missionCard(m,showJour=false){
   const emp=ge(m.employe);const cli=gc(m.client);if(!emp)return'';
-  return `<div class="card" style="border-left-color:${emp.couleur}" onclick="openMission(${m.id})">
+  const conflit=aChevauch(m);
+  const trajet=!conflit&&aTropPres(m);
+  const borderColor=conflit?'#DC2626':trajet?'#EA580C':emp.couleur;
+  const warningBg=conflit?' background:#FEF2F2;':trajet?' background:#FFF7ED;':'';
+  let warning='';
+  if(conflit) warning=`<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:5px 9px;font-size:11px;font-weight:700;color:#DC2626;margin-top:6px">⚠️ Chevauchement horaire</div>`;
+  else if(trajet) warning=`<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:5px 9px;font-size:11px;font-weight:700;color:#EA580C;margin-top:6px">🚗 Temps de trajet insuffisant (&lt;45 min)</div>`;
+  return `<div class="card" style="border-left-color:${borderColor};${warningBg}" onclick="openMission(${m.id})">
     ${avatar(emp,44)}
     <div class="card-body">
       <div class="card-top"><span class="card-title">${cli?.nom||'?'}</span>${badge(cli?.type)}</div>
@@ -298,6 +324,7 @@ function missionCard(m,showJour=false){
         <span>⏱ ${m.duree}</span>
         <span style="color:${emp.couleur};font-weight:700">· ${emp.nom.split(' ')[0]}</span>
       </div>
+      ${warning}
     </div>
     <div style="color:#C7D5F0;font-size:18px">›</div>
   </div>`;
@@ -362,6 +389,27 @@ function renderSemaine(c){
   });
   h+=`</div>`;
   h+=`<div class="sec-title">${JOURS_FULL[jourActif]}<span class="sec-sub">${ms.length} mission${ms.length>1?'s':''}</span></div>`;
+  // Alertes globales
+  const totalConflits=missions.filter(m=>aChevauch(m)).length;
+  const totalTrajet=missions.filter(m=>!aChevauch(m)&&aTropPres(m)).length;
+  if(totalConflits>0){
+    h+=`<div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:14px;padding:13px 16px;margin-bottom:10px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:20px">⚠️</span>
+      <div>
+        <div style="font-weight:700;color:#DC2626;font-size:14px">${totalConflits} chevauchement${totalConflits>1?'s':''} détecté${totalConflits>1?'s':''}</div>
+        <div style="font-size:12px;color:#991B1B;margin-top:2px">Missions en rouge à corriger</div>
+      </div>
+    </div>`;
+  }
+  if(totalTrajet>0){
+    h+=`<div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:14px;padding:13px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:20px">🚗</span>
+      <div>
+        <div style="font-weight:700;color:#EA580C;font-size:14px">${totalTrajet} trajet${totalTrajet>1?'s':''} trop court${totalTrajet>1?'s':''}</div>
+        <div style="font-size:12px;color:#9A3412;margin-top:2px">Moins de 45 min entre deux missions</div>
+      </div>
+    </div>`;
+  }
   const avecM=employes.filter(e=>me(e.id).length>0);
   if(avecM.length>0){
     h+=`<button class="btn-wa-all" onclick="sendAllWeek()">${waIcon()} Envoyer toute la semaine à tous les ${avecM.length} agents</button>`;
@@ -488,8 +536,15 @@ function openAddMission(){
   document.getElementById('overlay-add-mission').style.display='flex';
 }
 function addMission(){
-  missions.push({id:nextMId++,employe:parseInt(document.getElementById('f-emp').value),client:parseInt(document.getElementById('f-cli').value),jour:parseInt(document.getElementById('f-jour').value),heure:document.getElementById('f-heure').value,duree:document.getElementById('f-duree').value});
-  closeOverlay('overlay-add-mission');showToast('✅ Mission ajoutée et sauvegardée !');render();
+  const nouvelle={id:nextMId++,employe:parseInt(document.getElementById('f-emp').value),client:parseInt(document.getElementById('f-cli').value),jour:parseInt(document.getElementById('f-jour').value),heure:document.getElementById('f-heure').value,duree:document.getElementById('f-duree').value};
+  missions.push(nouvelle);
+  const conflit=missions.some(m2=>chevauche(nouvelle,m2));
+  const trajetCourt=!conflit&&missions.some(m2=>tropPres(nouvelle,m2));
+  closeOverlay('overlay-add-mission');
+  if(conflit){ showToast('⚠️ Chevauchement horaire détecté !'); }
+  else if(trajetCourt){ showToast('🚗 Trajet insuffisant — moins de 45 min !'); }
+  else { showToast('✅ Mission ajoutée et sauvegardée !'); }
+  render();
 }
 function openMission(id){
   const m=missions.find(x=>x.id===id);const emp=ge(m.employe);const cli=gc(m.client);if(!emp)return;
