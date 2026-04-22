@@ -352,9 +352,7 @@ function sendPlanningAgent(empId){
   let msg=`Bonjour ${emp.nom.split(' ')[0]} 👋\n\n📅 Votre planning de la semaine :\n\n`;
   ms.forEach(m=>{
     const cli=gc(m.client);
-    const adresseEncode=encodeURIComponent(cli?.adresse||'');
-    const mapsLink=`https://www.google.com/maps/search/?api=1&query=${adresseEncode}`;
-    msg+=`*${JOURS_FULL[m.jour]}* — ${m.heure} (${m.duree})\n👤 ${cli?.nom}\n📍 ${cli?.adresse}\n🗺 ${mapsLink}${cli?.notes?'\n📝 '+cli.notes:''}\n\n`;
+    msg+=`*${JOURS_FULL[m.jour]}* — ${m.heure} (${m.duree})\n👤 ${cli?.nom}\n📍 ${cli?.adresse}${cli?.notes?'\n📝 '+cli.notes:''}\n\n`;
   });
   msg+=`Bonne semaine !`;
   window.open(`https://wa.me/${emp.tel.replace(/^0/,'33')}?text=${encodeURIComponent(msg)}`,'_blank');
@@ -373,9 +371,7 @@ function sendNextAgent(){
   let msg=`Bonjour ${emp.nom.split(' ')[0]} 👋\n\n📅 Votre planning de la semaine :\n\n`;
   ms.forEach(m=>{
     const cli=gc(m.client);
-    const adresseEncode=encodeURIComponent(cli?.adresse||'');
-    const mapsLink=`https://www.google.com/maps/search/?api=1&query=${adresseEncode}`;
-    msg+=`*${JOURS_FULL[m.jour]}* — ${m.heure} (${m.duree})\n👤 ${cli?.nom}\n📍 ${cli?.adresse}\n🗺 ${mapsLink}${cli?.notes?'\n📝 '+cli.notes:''}\n\n`;
+    msg+=`*${JOURS_FULL[m.jour]}* — ${m.heure} (${m.duree})\n👤 ${cli?.nom}\n📍 ${cli?.adresse}${cli?.notes?'\n📝 '+cli.notes:''}\n\n`;
   });
   msg+=`Bonne semaine !`;
   window.open(`https://wa.me/${emp.tel.replace(/^0/,'33')}?text=${encodeURIComponent(msg)}`,'_blank');
